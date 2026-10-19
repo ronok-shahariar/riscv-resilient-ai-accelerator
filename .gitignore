@@ -1,0 +1,35 @@
+# Vivado generated files
+.Xil/
+*.jou
+*.log
+*.str
+*.cache/
+*.runs/
+*.sim/
+*.gen/
+*.hw/
+*.ip_user_files/
+
+# FPGA programming files
+*.bit
+*.bin
+*.ltx
+
+# Compiled firmware
+*.elf
+*.hex
+*.mem
+*.o
+*.map
+
+# Simulation artifacts
+*.vcd
+*.vvp
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor and OS
+.vscode/
+.DS_Store
