@@ -33,3 +33,4 @@ __pycache__/
 # Editor and OS
 .vscode/
 .DS_Store
+firmware/build/
