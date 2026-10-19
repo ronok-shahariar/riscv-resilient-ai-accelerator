@@ -34,3 +34,4 @@ __pycache__/
 .vscode/
 .DS_Store
 firmware/build/
+simulation/build/
