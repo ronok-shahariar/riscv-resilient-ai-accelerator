@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software in academic research, please cite the repository."
+type: software
+title: "RISC-V-Based Fault-Resilient INT8 AI Accelerator"
+authors:
+  - family-names: "Hassan"
+    given-names: "Md Shahariar"
+    email: "346ronokarya@gmail.com"
+repository-code: "https://github.com/ronok-shahariar/riscv-resilient-ai-accelerator"
+url: "https://github.com/ronok-shahariar/riscv-resilient-ai-accelerator"
+license: "Apache-2.0"
+abstract: >-
+  A research-oriented PicoRV32-based RISC-V system integrating a custom signed
+  INT8 multiply-accumulate accelerator through memory-mapped I/O, with
+  simulation testbenches and automated verification. Fault-resilience and FPGA
+  implementation are planned stages, not yet verified results.

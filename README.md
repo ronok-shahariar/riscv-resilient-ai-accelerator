@@ -1,12 +1,12 @@
 # RISC-V-Based Fault-Resilient INT8 AI Accelerator
 
-A research-oriented FPGA project integrating a **PicoRV32 RISC-V processor** with a custom **signed INT8 multiply-accumulate (MAC) accelerator**, using memory-mapped I/O (MMIO). Development proceeds incrementally from processor and firmware verification to accelerator integration, fault-resilience experiments, and FPGA implementation.
+A research-oriented FPGA project integrating a **PicoRV32 RISC-V processor** with a custom **signed INT8 multiply-accumulate (MAC) accelerator** through memory-mapped I/O (MMIO). Development proceeds incrementally from processor and firmware verification to accelerator integration, fault-resilience experiments, and FPGA implementation.
 
 > **Current stage — Weeks 1–2 completed:** Processor-controlled INT8 MAC execution has been verified **in RTL simulation** and through automated GitHub Actions regression tests. Fault resilience, FPGA synthesis results, and on-board deployment have **not** yet been demonstrated.
 
 ## Start Here
 
-- **[Architecture overview](architecture/architecture.md)** — concise SoC and verification diagrams, design decisions, and development roadmap.
+- **[Architecture overview](architecture/architecture.md)** — SoC and verification diagrams, design decisions, and development roadmap.
 - **[Week 1 engineering report](docs/weekly-reports/Week_01_RISCV_FPGA_Engineering_Report.md)** — PicoRV32 baseline, RV32I firmware execution, toolchain validation, and initial CI.
 - **[Week 2 engineering report](docs/weekly-reports/Week_02_RISCV_INT8_Accelerator_Engineering_Report.md)** — INT8 MAC design, arithmetic and MMIO tests, CPU-controlled integration, debugging, and CI evidence.
 
@@ -14,11 +14,11 @@ A research-oriented FPGA project integrating a **PicoRV32 RISC-V processor** wit
 
 ![PicoRV32 with simulation RAM, MMIO controller, and signed INT8 MAC](architecture/01-soc-overview.png)
 
-The current **simulation testbench** connects the PicoRV32 RV32I CPU to **16 KB of instruction/data RAM**, a memory-mapped INT8 MAC controller at `0x80000000`, and a simulation-only result-reporting address at `0x10000000`. The MAC multiplies signed 8-bit operands, sign-extends the 16-bit product, and accumulates it in a signed 32-bit register; accumulator arithmetic wraps on overflow rather than saturating.
+The current **simulation testbench** connects the PicoRV32 RV32I CPU to **16 KB of instruction/data RAM**, a memory-mapped INT8 MAC controller at `0x80000000`, and a simulation-only result-reporting address at `0x10000000`. The MAC multiplies signed 8-bit operands, sign-extends the 16-bit product, and accumulates it in a signed 32-bit register. Accumulator arithmetic wraps on overflow rather than saturating.
 
-The MMIO controller provides activation, weight, control, status, and result registers. Bare-metal C firmware writes operands, issues `START`, polls the sticky `DONE` bit, and reads back the accumulator. The reusable MAC and peripheral are separate RTL modules; the current SoC address routing and RAM model live in a **simulation testbench**, not yet in a synthesizable top-level SoC.
+The MMIO controller provides activation, weight, control, status, and result registers. Bare-metal C firmware writes operands, issues `START`, polls the sticky `DONE` bit, and reads back the accumulator. The MAC and peripheral are separate RTL modules; the current SoC address routing and RAM model live in a **simulation testbench**, not yet in a synthesizable top-level SoC.
 
-For register addresses and diagrams, see the **[architecture overview](architecture/architecture.md)**.
+For register addresses and additional design details, see the [architecture overview](architecture/architecture.md).
 
 ## Verified Results
 
@@ -40,7 +40,7 @@ All **six regression suites** passed locally and in the GitHub Actions workflow 
 On Ubuntu with Icarus Verilog, Python 3, a compatible `riscv64-unknown-elf-gcc` cross-compiler, and RISC-V binutils installed:
 
 ```bash
-# Run both firmware builds and all six RTL/firmware simulation suites
+# Build both firmware images and run all six RTL/firmware simulation suites
 ./scripts/run_tests.sh
 ```
 
@@ -81,8 +81,8 @@ The runner builds both the baseline and accelerator firmware, invokes Icarus Ver
 | Location | Contents |
 |---|---|
 | [`architecture/`](architecture/) | High-level architecture overview and compact diagrams |
-| [`rtl/cpu/`](rtl/cpu/) | PicoRV32 RTL and attribution/license files |
-| [`rtl/accelerator/`](rtl/accelerator/) | INT8 MAC RTL and MMIO controller |
+| [`rtl/cpu/`](rtl/cpu/) | Third-party PicoRV32 RTL and attribution/license files |
+| [`rtl/accelerator/`](rtl/accelerator/) | Project-specific INT8 MAC RTL and MMIO controller |
 | [`firmware/src/`](firmware/src/) | Baseline bare-metal firmware and startup code |
 | [`firmware/accelerator/`](firmware/accelerator/) | CPU-controlled accelerator firmware |
 | [`simulation/testbench/`](simulation/testbench/) | Self-checking verification testbenches |
@@ -93,10 +93,54 @@ The runner builds both the baseline and accelerator firmware, invokes Icarus Ver
 
 ## Limitations and Next Steps
 
-The completed work provides a **simulation-verified baseline**, not yet a deployed, fault-resilient FPGA accelerator. In particular, there are no measured Artix-7 resource counts, timing closure results, on-board throughput figures, or fault-detection/mitigation performance metrics. The SoC testbench's RAM and address routing must also be migrated into synthesizable hardware before FPGA implementation.
+The completed work provides a **simulation-verified baseline**, not yet a deployed, fault-resilient FPGA accelerator. In particular, there are no measured Artix-7 resource counts, timing-closure results, on-board throughput figures, or fault-detection/mitigation performance metrics. The SoC testbench's RAM and address routing must also be migrated into synthesizable hardware before FPGA implementation.
 
 Week 3 will define an explicit transient-fault model and measurable detection/mitigation criteria. Week 4 targets FPGA synthesis and evaluation, subject to confirming the exact AX7203 FPGA part and constraints.
 
-## Licensing
+## Authorship, Licensing, and Research Citation
 
-The repository's overall license is to be determined. **PicoRV32 is a third-party core**; retain and follow its separately included license and attribution in `rtl/cpu/`.
+**Project maintainer and original accelerator author:** Md Shahariar Hassan
+
+**Research contact:** 346ronokarya@gmail.com
+
+**Original repository:** [ronok-shahariar/riscv-resilient-ai-accelerator](https://github.com/ronok-shahariar/riscv-resilient-ai-accelerator)
+
+### Original Project Contributions
+
+The project-specific contributions include:
+
+- Design and RTL implementation of the signed INT8 MAC accelerator.
+- Development of the MMIO peripheral and its control interface.
+- PicoRV32-controlled accelerator integration and bare-metal C firmware.
+- Directed, randomized, exhaustive, MMIO, and end-to-end verification.
+- Firmware build automation, GitHub Actions CI, and engineering documentation.
+
+These contributions are distinct from the third-party PicoRV32 processor and other external tools.
+
+### Third-Party Attribution
+
+This repository includes [PicoRV32](https://github.com/YosysHQ/picorv32), an open-source RISC-V processor developed by **Claire Xenia Wolf**.
+
+PicoRV32 remains under its original **ISC License**. The original copyright and license text are preserved in [`rtl/cpu/PICORV32_LICENSE`](rtl/cpu/PICORV32_LICENSE).
+
+The project maintainer does not claim authorship of PicoRV32.
+
+### License and Reuse
+
+Original project contributions are available under the **[Apache License 2.0](LICENSE)**, to the extent that the maintainer owns the applicable rights.
+
+Researchers and developers may use, modify, experiment with, and redistribute the licensed work, including for commercial purposes, subject to the applicable license terms.
+
+The Apache 2.0 license does not override PicoRV32's separate ISC license.
+
+See [`NOTICE`](NOTICE) for copyright attribution and project provenance.
+
+### Academic Citation
+
+If this project supports your research, please cite the original repository:
+
+> Md Shahariar Hassan. *RISC-V-Based Fault-Resilient INT8 AI Accelerator*. GitHub repository: https://github.com/ronok-shahariar/riscv-resilient-ai-accelerator
+
+GitHub's **Cite this repository** feature uses [`CITATION.cff`](CITATION.cff).
+
+Academic citation is requested as a scholarly courtesy, not as an additional Apache 2.0 licensing requirement. The project's Git history, source headers, and engineering reports provide a record of its development but are not independent proof of legal ownership or research novelty.

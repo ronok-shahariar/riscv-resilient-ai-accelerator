@@ -1,3 +1,7 @@
+// Copyright 2026 Md Shahariar Hassan
+// SPDX-License-Identifier: Apache-2.0
+// Original repository: https://github.com/ronok-shahariar/riscv-resilient-ai-accelerator
+
 `timescale 1ns/1ps
 
 module tb_int8_mac;

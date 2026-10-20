@@ -1,3 +1,7 @@
+// Copyright 2026 Md Shahariar Hassan
+// SPDX-License-Identifier: Apache-2.0
+// Original repository: https://github.com/ronok-shahariar/riscv-resilient-ai-accelerator
+
 #include <stdint.h>
 
 #define MAC_BASE        0x80000000u

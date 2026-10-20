@@ -1,0 +1,29 @@
+RISC-V-Based Fault-Resilient INT8 AI Accelerator
+Copyright 2026 Md Shahariar Hassan
+Original repository: https://github.com/ronok-shahariar/riscv-resilient-ai-accelerator
+Research contact: 346ronokarya@gmail.com
+
+ORIGINAL CONTRIBUTIONS
+
+Except where separately identified, original accelerator, peripheral,
+firmware integration, verification, build automation, and documentation
+contributions made by Md Shahariar Hassan are offered under the Apache
+License, Version 2.0 (see LICENSE), to the extent that he owns the relevant
+rights. A repository license does not transfer third-party copyrights.
+
+THIRD-PARTY SOFTWARE
+
+PicoRV32 (rtl/cpu/picorv32.v) is third-party open-source software by
+Claire Xenia Wolf and is distributed under the ISC License.
+Copyright (C) 2015 - 2021 Claire Xenia Wolf <claire@yosyshq.com>.
+Its full, original license text is retained in rtl/cpu/PICORV32_LICENSE.
+PicoRV32 is not claimed as an original implementation by this project's
+maintainer, and the project's Apache-2.0 license does not supersede its ISC
+license.
+
+ACADEMIC CITATION
+
+If you use the original project in academic work, please cite the repository
+using CITATION.cff and identify relevant third-party software separately.
+Academic citation is requested as a scholarly courtesy; it is not an
+additional legal restriction on the Apache-2.0 license.
