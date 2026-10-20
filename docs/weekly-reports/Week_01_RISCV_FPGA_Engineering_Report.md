@@ -41,9 +41,17 @@ Out of scope this week: INT8 MAC, quantization, fault injection, resilience metr
 | PicoRV32 revision | ef203c2b0a3fb793280f5114941416c425c5b461 |
 
 Vivado executable verified at /home/ronok/Vivado2025.2/2025.2/Vivado/bin/vivado. get_parts returned XC7A200T variants including fbg484, fbg676 and ffg1156; supported family does NOT establish the exact board package. Verify the chip marking/board schematic before pin assignments or hardware implementation.
-> **SCREENSHOT SLOT:** Insert screenshot of `vivado -version` and XC7A200T get_parts Tcl output; suggested file docs/screenshots/week01/01-vivado-device-support.png.
 
-> **SCREENSHOT SLOT:** Insert screenshot of cross-compiler `readelf` + RV32I `objdump`; suggested file docs/screenshots/week01/02-rv32i-toolchain.png.
+![Figure 01 — Vivado 2025.2 and XC7A200T device support](../../screenshots/week01/01-vivado-device-support.png)
+
+*Figure 01. Vivado 2025.2 and XC7A200T device support.*
+
+
+
+![Figure 02 — RISC-V compiler and RV32I verification](../../screenshots/week01/02-rv32i-toolchain.png)
+
+*Figure 02. RISC-V compiler and RV32I verification.*
+
 
 # 3. Repository layout and provenance
 
@@ -67,7 +75,11 @@ PicoRV32 originated from https://github.com/YosysHQ/picorv32. Its original sourc
 | 397356e | Automate firmware builds and PicoRV32 tests with GitHub Actions |
 | e1d4ec5 | Update checkout to v5 and upload-artifact to v7 |
 
-> **SCREENSHOT SLOT:** Insert screenshot of GitHub Code tab showing tree and commit history; docs/screenshots/week01/03-repository-history.png.
+
+![Figure 03 — Repository structure and Git history](../../screenshots/week01/03-repository-history.png)
+
+*Figure 03. Repository structure and Git history.*
+
 
 # 4. CPU baseline: manually encoded instructions
 
@@ -87,7 +99,11 @@ vvp /tmp/tb_picorv32.vvp
 
 Observed: “MMIO WRITE: value=12” and “PASS: PicoRV32 executed RV32I instructions correctly.” The testbench called $finish at 315000 in 1 ps simulation precision (315 ns); this is functional simulation time and must not be presented as real FPGA latency.
 Debugging note: an initial testbench used the incorrect parameter ENABLE_COMPRESSED. Replacing it with the actual PicoRV32 parameter COMPRESSED_ISA fixed elaboration. Keep this as a reproducibility lesson.
-> **SCREENSHOT SLOT:** Insert screenshot of baseline simulation terminal PASS output; docs/screenshots/week01/04-baseline-test.png.
+
+![Figure 04 — PicoRV32 baseline simulation](../../screenshots/week01/04-baseline-test.png)
+
+*Figure 04. PicoRV32 baseline simulation.*
+
 
 # 5. C firmware, startup and linker integration
 
@@ -110,9 +126,17 @@ The ELF was converted to a flat binary with riscv64-unknown-elf-objcopy -O binar
 ```
 
 Observed firmware test: MMIO WRITE: value=12; PASS: Compiled C firmware executed successfully. Testbench $finish occurred at 465000 ps (465 ns). The “Not enough words” $readmemh warning stems from reading 11 image words into a 4096-word array preinitialized to NOPs. For future cleanliness, set an explicit readmemh end index or load a padded image.
-> **SCREENSHOT SLOT:** Insert screenshot of `readelf` / `size` / disassembly, including the 44-byte text size; docs/screenshots/week01/05-elf-disassembly.png.
 
-> **SCREENSHOT SLOT:** Insert screenshot of both local PASS messages from `./scripts/run_tests.sh`; docs/screenshots/week01/06-local-regression.png.
+![Figure 05 — Bare-metal C firmware and ELF verification](../../screenshots/week01/05-elf-disassembly.png)
+
+*Figure 05. Bare-metal C firmware and ELF verification.*
+
+
+
+![Figure 06 — Automated local regression verification](../../screenshots/week01/06-local-regression.png)
+
+*Figure 06. Automated local regression verification.*
+
 
 # 6. Continuous integration design
 
@@ -129,11 +153,11 @@ The shell test runner uses set -euo pipefail and checks expected PASS strings; a
 # 7. GitHub Actions evidence — supplied screenshots
 
 The screenshots below were provided after the workflow update and show the second run of “RISC-V RTL and Firmware CI”, commit e1d4ec5, status Success, total duration 22 seconds, one successful job and one produced artifact. The run summary has no warning annotation visible in the supplied image.
-![Figure 1. Successful GitHub Actions run #2: commit e1d4ec5, 22 seconds, one artifact (user-provided capture).](week1_report_assets/ci_run_success.png)
+![Figure 1. Successful GitHub Actions run #2: commit e1d4ec5, 22 seconds, one artifact (user-provided capture).](../../screenshots/week01/07-ci-run-success.png)
 
 *Figure 1. Successful GitHub Actions run #2: commit e1d4ec5, 22 seconds, one artifact (user-provided capture).*
 
-![Figure 2. GitHub Actions history: both run #1 and run #2 succeeded (user-provided capture).](week1_report_assets/ci_run_history.png)
+![Figure 2. GitHub Actions history: both run #1 and run #2 succeeded (user-provided capture).](../../screenshots/week01/08-ci-run-history.png)
 
 *Figure 2. GitHub Actions history: both run #1 and run #2 succeeded (user-provided capture).*
 
@@ -212,63 +236,14 @@ Final Week 01 assessment: software-to-simulated-hardware bring-up and CI are com
 
 ---
 
-## Week 1 — Verification Evidence Gallery
+### Figure 07 — GitHub Actions successful CI run
 
-All evidence was captured from reproducible development
-and verification procedures on 20 October 2026,
-except the GitHub Actions screenshots captured earlier.
+![GitHub Actions successful CI run](../../screenshots/week01/07-ci-run-success.png)
 
-### Figure 01 — Vivado Device Support
+*Figure 07. GitHub Actions successful CI run.*
 
-![Vivado 2025.2 and XC7A200T verification](../../screenshots/week01/01-vivado-device-support.png)
+### Figure 08 — GitHub Actions run history
 
-*Figure 01. Vivado 2025.2 verification confirming support for
-32 XC7A200T device variants.*
+![GitHub Actions run history](../../screenshots/week01/08-ci-run-history.png)
 
-### Figure 02 — RISC-V Compiler Verification
-
-![RISC-V toolchain and disassembly](../../screenshots/week01/02-rv32i-toolchain.png)
-
-*Figure 02. RV32I firmware compilation, ELF32 architecture,
-and generated RISC-V instructions.*
-
-### Figure 03 — Repository Structure and History
-
-![Git history and project structure](../../screenshots/week01/03-repository-history.png)
-
-*Figure 03. Git commit history, project files,
-and GitHub remote configuration.*
-
-### Figure 04 — PicoRV32 Baseline Simulation
-
-![PicoRV32 baseline simulation](../../screenshots/week01/04-baseline-test.png)
-
-*Figure 04. RV32I baseline test confirming successful
-MMIO output of decimal value 12.*
-
-### Figure 05 — Firmware ELF Verification
-
-![Bare-metal firmware verification](../../screenshots/week01/05-elf-disassembly.png)
-
-*Figure 05. Bare-metal firmware build, 44-byte program size,
-and memory-mapped store instruction.*
-
-### Figure 06 — Automated Local Regression
-
-![Local simulation regression tests](../../screenshots/week01/06-local-regression.png)
-
-*Figure 06. Automated firmware build and both
-PicoRV32 simulation tests passing.*
-
-### Figure 07 — Successful GitHub Actions Run
-
-![GitHub Actions successful run](../../screenshots/week01/07-ci-run-success.png)
-
-*Figure 07. Successful GitHub Actions verification run.*
-
-### Figure 08 — GitHub Actions History
-
-![GitHub Actions workflow history](../../screenshots/week01/08-ci-run-history.png)
-
-*Figure 08. GitHub Actions workflow history
-demonstrating repeated successful CI execution.*
+*Figure 08. GitHub Actions run history.*
