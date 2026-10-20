@@ -71,6 +71,29 @@ run_test \
     "simulation/testbench/tb_int8_mac_exhaustive.v" \
     "[PASS] Exhaustive INT8 MAC verification"
 
+# Test 5: INT8 MAC MMIO peripheral
+echo "===================================="
+echo "[TEST] int8_mac_mmio"
+echo "===================================="
+
+iverilog -g2012 -Wall \
+    -s tb_int8_mac_mmio \
+    -o "$BUILD_DIR/int8_mac_mmio.vvp" \
+    rtl/accelerator/int8_mac.v \
+    rtl/accelerator/int8_mac_mmio.v \
+    simulation/testbench/tb_int8_mac_mmio.v
+
+vvp "$BUILD_DIR/int8_mac_mmio.vvp" \
+    | tee "$BUILD_DIR/int8_mac_mmio.log"
+
+grep -Fq "[PASS] All MMIO verification tests passed" \
+    "$BUILD_DIR/int8_mac_mmio.log"
+
+grep -Fq "Checks completed: 16" \
+    "$BUILD_DIR/int8_mac_mmio.log"
+
+echo "[PASS] int8_mac_mmio"
+
 echo "===================================="
 echo "[SUCCESS] All RTL and firmware tests passed"
 echo "===================================="
