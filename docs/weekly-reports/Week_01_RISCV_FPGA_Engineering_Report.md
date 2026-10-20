@@ -209,3 +209,66 @@ At the end of each week, freeze a known Git commit, run local regression and rem
 | Open risks / next steps | Unverified assumptions and next-week milestones |
 
 Final Week 01 assessment: software-to-simulated-hardware bring-up and CI are complete. FPGA implementation and resilience research remain future work. This distinction protects scientific credibility and makes later performance claims auditable.
+
+---
+
+## Week 1 — Verification Evidence Gallery
+
+All evidence was captured from reproducible development
+and verification procedures on 20 October 2026,
+except the GitHub Actions screenshots captured earlier.
+
+### Figure 01 — Vivado Device Support
+
+![Vivado 2025.2 and XC7A200T verification](../../screenshots/week01/01-vivado-device-support.png)
+
+*Figure 01. Vivado 2025.2 verification confirming support for
+32 XC7A200T device variants.*
+
+### Figure 02 — RISC-V Compiler Verification
+
+![RISC-V toolchain and disassembly](../../screenshots/week01/02-rv32i-toolchain.png)
+
+*Figure 02. RV32I firmware compilation, ELF32 architecture,
+and generated RISC-V instructions.*
+
+### Figure 03 — Repository Structure and History
+
+![Git history and project structure](../../screenshots/week01/03-repository-history.png)
+
+*Figure 03. Git commit history, project files,
+and GitHub remote configuration.*
+
+### Figure 04 — PicoRV32 Baseline Simulation
+
+![PicoRV32 baseline simulation](../../screenshots/week01/04-baseline-test.png)
+
+*Figure 04. RV32I baseline test confirming successful
+MMIO output of decimal value 12.*
+
+### Figure 05 — Firmware ELF Verification
+
+![Bare-metal firmware verification](../../screenshots/week01/05-elf-disassembly.png)
+
+*Figure 05. Bare-metal firmware build, 44-byte program size,
+and memory-mapped store instruction.*
+
+### Figure 06 — Automated Local Regression
+
+![Local simulation regression tests](../../screenshots/week01/06-local-regression.png)
+
+*Figure 06. Automated firmware build and both
+PicoRV32 simulation tests passing.*
+
+### Figure 07 — Successful GitHub Actions Run
+
+![GitHub Actions successful run](../../screenshots/week01/07-ci-run-success.png)
+
+*Figure 07. Successful GitHub Actions verification run.*
+
+### Figure 08 — GitHub Actions History
+
+![GitHub Actions workflow history](../../screenshots/week01/08-ci-run-history.png)
+
+*Figure 08. GitHub Actions workflow history
+demonstrating repeated successful CI execution.*
