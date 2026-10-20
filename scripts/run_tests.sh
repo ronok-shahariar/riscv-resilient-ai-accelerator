@@ -94,6 +94,42 @@ grep -Fq "Checks completed: 16" \
 
 echo "[PASS] int8_mac_mmio"
 
+# Test 6: End-to-end PicoRV32 + INT8 MAC SoC integration
+echo "===================================="
+echo "[TEST] picorv32_accelerator"
+echo "===================================="
+
+# Build the accelerator firmware separately from Week 1 firmware.
+./scripts/build_accelerator_firmware.sh
+
+iverilog -g2012 -Wall \
+    -s tb_picorv32_accelerator \
+    -o "$BUILD_DIR/picorv32_accelerator.vvp" \
+    rtl/cpu/picorv32.v \
+    rtl/accelerator/int8_mac.v \
+    rtl/accelerator/int8_mac_mmio.v \
+    simulation/testbench/tb_picorv32_accelerator.v
+
+vvp "$BUILD_DIR/picorv32_accelerator.vvp" \
+    | tee "$BUILD_DIR/picorv32_accelerator.log"
+
+grep -Fq "[PASS] PicoRV32 controlled INT8 MAC" \
+    "$BUILD_DIR/picorv32_accelerator.log"
+
+grep -Fq "[PASS] Three MAC commands completed" \
+    "$BUILD_DIR/picorv32_accelerator.log"
+
+grep -Fq "[PASS] Final accumulator = 39" \
+    "$BUILD_DIR/picorv32_accelerator.log"
+
+if [[ $(grep -c "^\\[MAC\\] START command" \
+    "$BUILD_DIR/picorv32_accelerator.log") -ne 3 ]]; then
+    echo "[FAIL] Expected exactly three START commands"
+    exit 1
+fi
+
+echo "[PASS] picorv32_accelerator"
+
 echo "===================================="
 echo "[SUCCESS] All RTL and firmware tests passed"
 echo "===================================="
