@@ -35,3 +35,5 @@ __pycache__/
 .DS_Store
 firmware/build/
 simulation/build/
+# Vivado Build Outputs & Caches
+vivado_outputs/
