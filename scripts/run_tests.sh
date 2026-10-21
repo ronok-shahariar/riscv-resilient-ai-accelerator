@@ -24,11 +24,7 @@ run_test() {
     echo "[TEST] $name"
     echo "===================================="
 
-    iverilog -g2012 \
-        -s "$top" \
-        -o "$executable" \
-        "$rtl_source" \
-        "$source"
+    iverilog -g2012         -s "$top"         -o "$executable"         "$rtl_source"         "$source"
 
     vvp "$executable" | tee "$logfile"
 
@@ -40,90 +36,54 @@ run_test() {
     echo "[PASS] $name"
 }
 
-# Build firmware before testing
+# Build legacy firmware before testing
 ./scripts/build_firmware.sh
 
 # Test 1: Manually encoded RV32I instructions
-run_test \
-    "picorv32_baseline" \
-    "tb_picorv32" \
-    "simulation/testbench/tb_picorv32.v" \
-    "PASS: PicoRV32 executed RV32I instructions correctly."
+run_test     "picorv32_baseline"     "tb_picorv32"     "simulation/testbench/tb_picorv32.v"     "PASS: PicoRV32 executed RV32I instructions correctly."
 
 # Test 2: GCC-compiled bare-metal C firmware
-run_test \
-    "picorv32_firmware" \
-    "tb_picorv32_firmware" \
-    "simulation/testbench/tb_picorv32_firmware.v" \
-    "PASS: Compiled C firmware executed successfully."
+run_test     "picorv32_firmware"     "tb_picorv32_firmware"     "simulation/testbench/tb_picorv32_firmware.v"     "PASS: Compiled C firmware executed successfully."
 
 # Test 3: Directed, randomized, and overflow MAC verification
-run_test \
-    "int8_mac" \
-    "tb_int8_mac" \
-    "simulation/testbench/tb_int8_mac.v" \
-    "[PASS] All INT8 MAC tests passed"
+run_test     "int8_mac"     "tb_int8_mac"     "simulation/testbench/tb_int8_mac.v"     "[PASS] All INT8 MAC tests passed"
 
 # Test 4: Exhaustive signed INT8 operand verification
-run_test \
-    "int8_mac_exhaustive" \
-    "tb_int8_mac_exhaustive" \
-    "simulation/testbench/tb_int8_mac_exhaustive.v" \
-    "[PASS] Exhaustive INT8 MAC verification"
+run_test     "int8_mac_exhaustive"     "tb_int8_mac_exhaustive"     "simulation/testbench/tb_int8_mac_exhaustive.v"     "[PASS] Exhaustive INT8 MAC verification"
 
-# Test 5: INT8 MAC MMIO peripheral
+# Test 5: Fault injection and clamping resilience verification
+run_test     "int8_mac_fault"     "tb_int8_mac_fault"     "simulation/testbench/tb_int8_mac_fault.v"     "[PASS] All Fault Resilience checks passed"
+
+# Test 6: INT8 MAC MMIO peripheral
 echo "===================================="
 echo "[TEST] int8_mac_mmio"
 echo "===================================="
 
-iverilog -g2012 -Wall \
-    -s tb_int8_mac_mmio \
-    -o "$BUILD_DIR/int8_mac_mmio.vvp" \
-    rtl/accelerator/int8_mac.v \
-    rtl/accelerator/int8_mac_mmio.v \
-    simulation/testbench/tb_int8_mac_mmio.v
+iverilog -g2012 -Wall     -s tb_int8_mac_mmio     -o "$BUILD_DIR/int8_mac_mmio.vvp"     rtl/accelerator/int8_mac.v     rtl/accelerator/int8_mac_mmio.v     simulation/testbench/tb_int8_mac_mmio.v
 
-vvp "$BUILD_DIR/int8_mac_mmio.vvp" \
-    | tee "$BUILD_DIR/int8_mac_mmio.log"
+vvp "$BUILD_DIR/int8_mac_mmio.vvp" | tee "$BUILD_DIR/int8_mac_mmio.log"
 
-grep -Fq "[PASS] All MMIO verification tests passed" \
-    "$BUILD_DIR/int8_mac_mmio.log"
-
-grep -Fq "Checks completed: 16" \
-    "$BUILD_DIR/int8_mac_mmio.log"
+grep -Fq "[PASS] All MMIO verification tests passed" "$BUILD_DIR/int8_mac_mmio.log"
+grep -Fq "Checks completed: 16" "$BUILD_DIR/int8_mac_mmio.log"
 
 echo "[PASS] int8_mac_mmio"
 
-# Test 6: End-to-end PicoRV32 + INT8 MAC SoC integration
+# Test 7: End-to-end PicoRV32 + INT8 MAC SoC integration
 echo "===================================="
 echo "[TEST] picorv32_accelerator"
 echo "===================================="
 
-# Build the accelerator firmware separately from Week 1 firmware.
 ./scripts/build_accelerator_firmware.sh
 
-iverilog -g2012 -Wall \
-    -s tb_picorv32_accelerator \
-    -o "$BUILD_DIR/picorv32_accelerator.vvp" \
-    rtl/cpu/picorv32.v \
-    rtl/accelerator/int8_mac.v \
-    rtl/accelerator/int8_mac_mmio.v \
-    simulation/testbench/tb_picorv32_accelerator.v
+iverilog -g2012 -Wall     -s tb_picorv32_accelerator     -o "$BUILD_DIR/picorv32_accelerator.vvp"     rtl/cpu/picorv32.v     rtl/accelerator/int8_mac.v     rtl/accelerator/int8_mac_mmio.v     simulation/testbench/tb_picorv32_accelerator.v
 
-vvp "$BUILD_DIR/picorv32_accelerator.vvp" \
-    | tee "$BUILD_DIR/picorv32_accelerator.log"
+vvp "$BUILD_DIR/picorv32_accelerator.vvp" | tee "$BUILD_DIR/picorv32_accelerator.log"
 
-grep -Fq "[PASS] PicoRV32 controlled INT8 MAC" \
-    "$BUILD_DIR/picorv32_accelerator.log"
+grep -Fq "[PASS] PicoRV32 controlled INT8 MAC" "$BUILD_DIR/picorv32_accelerator.log"
+grep -Fq "[PASS] Three MAC commands completed" "$BUILD_DIR/picorv32_accelerator.log"
+grep -Fq "[PASS] Final accumulator = 39" "$BUILD_DIR/picorv32_accelerator.log"
 
-grep -Fq "[PASS] Three MAC commands completed" \
-    "$BUILD_DIR/picorv32_accelerator.log"
-
-grep -Fq "[PASS] Final accumulator = 39" \
-    "$BUILD_DIR/picorv32_accelerator.log"
-
-if [[ $(grep -c "^\\[MAC\\] START command" \
-    "$BUILD_DIR/picorv32_accelerator.log") -ne 3 ]]; then
+if [[ $(grep -c "^\[MAC\] START command" "$BUILD_DIR/picorv32_accelerator.log") -ne 3 ]]; then
     echo "[FAIL] Expected exactly three START commands"
     exit 1
 fi
