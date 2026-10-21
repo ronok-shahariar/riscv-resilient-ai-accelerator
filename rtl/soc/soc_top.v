@@ -8,7 +8,8 @@ module soc_top (
     input  wire clk_p,
     input  wire clk_n,
     input  wire resetn,
-    output wire trap
+    output wire trap,
+    output wire uart_tx
 );
 
     // Internal single-ended clock derived from differential board clock
@@ -28,20 +29,29 @@ module soc_top (
     wire [3:0]  mem_wstrb;
     wire [31:0] mem_rdata;
 
-    wire ram_select  = (mem_addr < 32'h00004000);
-    wire mac_select  = (mem_addr[31:5] == 27'h4000000);
+    // Address decoders
+    wire ram_select  = (mem_addr < 32'h00004000);                      // 0x0000_0000 - 0x0000_3FFF (16KB BRAM)
+    wire uart_select = (mem_addr[31:12] == 20'h40000);                 // 0x4000_0000 - 0x4000_0FFF (UART TX)
+    wire mac_select  = (mem_addr[31:5]  == 27'h4000000);                // 0x8000_0000 - 0x8000_001F (INT8 MAC Accelerator)
 
     wire        ram_ready;
     wire [31:0] ram_rdata;
 
+    wire        uart_ready;
+    wire [31:0] uart_rdata;
+
     wire        mac_ready;
     wire [31:0] mac_rdata;
 
-    assign mem_ready = ram_select ? ram_ready :
-                       mac_select ? mac_ready : 1'b0;
+    // Multiplex memory ready response
+    assign mem_ready = ram_select  ? ram_ready  :
+                       uart_select ? uart_ready :
+                       mac_select  ? mac_ready  : 1'b0;
 
-    assign mem_rdata = ram_select ? ram_rdata :
-                       mac_select ? mac_rdata : 32'b0;
+    // Multiplex memory read data response
+    assign mem_rdata = ram_select  ? ram_rdata  :
+                       uart_select ? uart_rdata :
+                       mac_select  ? mac_rdata  : 32'b0;
 
     picorv32 #(
         .BARREL_SHIFTER(0),
@@ -73,6 +83,22 @@ module soc_top (
         .mem_wstrb (mem_wstrb),
         .mem_ready (ram_ready),
         .mem_rdata (ram_rdata)
+    );
+
+    uart_tx #(
+        .BASE_ADDR (32'h40000000),
+        .CLK_FREQ  (200000000),
+        .BAUD_RATE (115200)
+    ) uart_unit (
+        .clk       (clk),
+        .resetn    (resetn),
+        .mem_valid (mem_valid && uart_select),
+        .mem_addr  (mem_addr),
+        .mem_wdata (mem_wdata),
+        .mem_wstrb (mem_wstrb),
+        .mem_ready (uart_ready),
+        .mem_rdata (uart_rdata),
+        .uart_tx   (uart_tx)
     );
 
     int8_mac_mmio #(

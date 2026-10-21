@@ -7,9 +7,11 @@ MEMORY
 
 SECTIONS
 {
-    .text :
+    . = 0x00000000;
+    .text : AT(0x00000000)
     {
-        KEEP(*(.text.start))
+        *(.text.init)
+        *(.text)
         *(.text*)
         *(.rodata*)
     } > RAM
@@ -26,5 +28,5 @@ SECTIONS
     } > RAM
 
     . = ALIGN(16);
-    _stack_top = ORIGIN(RAM) + LENGTH(RAM);
+    _stack_top = ORIGIN(RAM) + LENGTH(RAM) - 16;
 }

@@ -13,6 +13,7 @@ read_verilog ../../rtl/cpu/picorv32.v
 read_verilog ../../rtl/accelerator/int8_mac.v
 read_verilog ../../rtl/accelerator/int8_mac_mmio.v
 read_verilog ../../rtl/memory/bram_16kb.v
+read_verilog ../../rtl/soc/uart_tx.v
 read_verilog ../../rtl/soc/soc_top.v
 read_xdc ../../constraints/ax7203.xdc
 

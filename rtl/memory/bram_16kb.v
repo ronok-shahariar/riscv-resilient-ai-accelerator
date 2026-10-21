@@ -18,6 +18,11 @@ module bram_16kb (
     // 16 KB RAM = 4096 words of 32 bits
     (* ram_style = "block" *) reg [31:0] ram [0:4095];
 
+    // Initialize RAM with compiled RISC-V firmware hex
+    initial begin
+        $readmemh("/home/ronok/Documents/riscv-resilient-ai-accelerator/firmware/build/firmware.hex", ram);
+    end
+
     // Address word index
     wire [11:0] word_addr = mem_addr[13:2];
 
