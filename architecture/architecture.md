@@ -1,6 +1,6 @@
 # RISC-V Fault-Resilient INT8 AI Accelerator — Architecture
 
-**Current milestone:** Weeks 1–2 completed and verified in RTL simulation. **Next:** fault injection and mitigation (Week 3), followed by FPGA implementation evaluation (Week 4).
+**Current milestone:** Weeks 1–3 completed and verified in RTL simulation. **Next:** synthesizable SoC integration and FPGA implementation evaluation on ALINX AX7203 (Week 4).
 
 > **Scope:** The current SoC interconnect and 16 KB RAM live in the integration **simulation testbench**. FPGA synthesis, hardware timing, power, and fault-resilience measurements have **not** yet been demonstrated. Target board: ALINX AX7203 (Artix-7 family); exact device package/speed grade remains to be checked before board implementation.
 
@@ -12,16 +12,28 @@ A PicoRV32 RV32I CPU runs compiled bare-metal C firmware from a 16 KB simulated 
 
 The arithmetic datapath performs **signed INT8 × INT8**, sign-extends the 16-bit product, and accumulates into a 32-bit signed register with wraparound arithmetic (no saturation implemented). The original PicoRV32 and MAC implementations remain individually tested.
 
+## Fault-Resilient Architecture (Week 3 Update)
+
+![Fault-Resilient SoC Architecture](03-fault-resilient-soc-architecture.jpeg)
+
+Week 3 extended the core INT8 MAC accelerator with a software-controlled **Fault Injection Unit (FIU)** and an inline **Dynamic Saturation / Clamping Resilience Stage**:
+
+- **Fault Injection Mechanism:** Controlled single-event upset (SEU) injection via XOR bit-masking targeting operand registers (`ACTIVATION`, `WEIGHT`) or the 32-bit running accumulator.
+- **Dynamic Clamping Mitigation:** Low-overhead inline saturation bounding output activations to $[-\text{BOUND}, +\text{BOUND}]$, stopping catastrophic sign-bit ($b_7$) numerical explosion and asserting a sticky `CLAMP_HIT` status bit.
+
+
 ### MMIO register map
 
 | Address | Register | Access | Function |
 |---|---|---|---|
-| `0x80000000` | ACTIVATION | Write | Signed INT8 in bits `[7:0]` |
-| `0x80000004` | WEIGHT | Write | Signed INT8 in bits `[7:0]` |
+| `0x80000000` | ACTIVATION | Write | Signed INT8 operand in bits `[7:0]` |
+| `0x80000004` | WEIGHT | Write | Signed INT8 operand in bits `[7:0]` |
 | `0x80000008` | CONTROL | Write | Bit 0 START; bit 1 CLEAR (CLEAR wins) |
-| `0x8000000C` | STATUS | Read | Bit 0 sticky DONE |
-| `0x80000010` | RESULT | Read | Signed INT32 accumulator |
-| `0x80000014`–`0x8000001F` | Reserved | — | Planned extension space; not implemented |
+| `0x8000000C` | STATUS | Read | Bit 0 sticky DONE; Bit 1 sticky CLAMP_HIT |
+| `0x80000010` | RESULT | Read | Signed INT32 accumulated result |
+| `0x80000014` | FAULT_CONFIG | Read/Write | `[0]` FAULT_EN, `[2:1]` TARGET (Act/Weight/Acc), `[7:3]` BIT_POS |
+| `0x80000018` | PROTECTION | Read/Write | Bit 0 CLAMP_EN (enables saturation clamping) |
+| `0x8000001C` | CLAMP_BOUND | Read/Write | Signed 32-bit symmetric dynamic clamp bound |
 
 The current MMIO testbench checks register operations, signed accumulation, clearing, partial writes, and held-`mem_valid` behavior. The CPU integration test confirms the exercised firmware transaction sequence; it does not prove every possible bus traffic pattern.
 
@@ -43,6 +55,7 @@ The regression builds the baseline and accelerator-specific RV32I firmware and e
 | PicoRV32 firmware | Executes GCC-built C firmware |
 | INT8 MAC directed/randomized | **213** self-checking checks including signed boundaries and wraparound |
 | INT8 MAC exhaustive | **65,536** INT8 operand combinations |
+| INT8 MAC fault resilience | **9** checks: bit-sweep ($b_0$–$b_7$) and saturation clamping |
 | MMIO peripheral | **16** standalone register/control/handshake checks |
 | PicoRV32 + MAC SoC | Firmware drives three MACs: **35 → 23 → 39** |
 
@@ -54,7 +67,7 @@ All six suites passed locally. GitHub Actions runs the same script on Ubuntu 24.
 |---|---|---|---|
 | **1** | PicoRV32 CPU baseline, RV32I firmware, simulation and CI | Completed | [Week 1 engineering report](../docs/weekly-reports/Week_01_RISCV_FPGA_Engineering_Report.md) |
 | **2** | Signed INT8 MAC, exhaustive tests, MMIO controller, CPU integration and CI | Completed | [Week 2 engineering report](../docs/weekly-reports/Week_02_RISCV_INT8_Accelerator_Engineering_Report.md) |
-| **3** | Fault model, transient injection, detection/mitigation experiments | Planned | Report to be added after verification |
+| **3** | Fault model, transient injection, detection/mitigation experiments | **Completed** | [Week 3 engineering report](../docs/weekly-reports/Week_03_Fault_Resilience_Engineering_Report.md) |
 | **4** | Vivado synthesis, resource/timing evaluation, potential board validation | Planned | Report to be added after measurement |
 
 ## Engineering contributions and traceability

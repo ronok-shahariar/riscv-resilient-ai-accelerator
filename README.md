@@ -2,21 +2,26 @@
 
 A research-oriented FPGA project integrating a **PicoRV32 RISC-V processor** with a custom **signed INT8 multiply-accumulate (MAC) accelerator** through memory-mapped I/O (MMIO). Development proceeds incrementally from processor and firmware verification to accelerator integration, fault-resilience experiments, and FPGA implementation.
 
-> **Current stage — Weeks 1–2 completed:** Processor-controlled INT8 MAC execution has been verified **in RTL simulation** and through automated GitHub Actions regression tests. Fault resilience, FPGA synthesis results, and on-board deployment have **not** yet been demonstrated.
+> **Current stage — Weeks 1–3 completed:** Processor-controlled INT8 MAC execution, transient fault injection, and dynamic saturation clamping resilience have been verified **in RTL simulation** and through automated regression tests. Physical FPGA synthesis, timing closure, and on-board deployment on the Artix-7 target are scheduled for Week 4.
 
 ## Start Here
 
 - **[Architecture overview](architecture/architecture.md)** — SoC and verification diagrams, design decisions, and development roadmap.
 - **[Week 1 engineering report](docs/weekly-reports/Week_01_RISCV_FPGA_Engineering_Report.md)** — PicoRV32 baseline, RV32I firmware execution, toolchain validation, and initial CI.
 - **[Week 2 engineering report](docs/weekly-reports/Week_02_RISCV_INT8_Accelerator_Engineering_Report.md)** — INT8 MAC design, arithmetic and MMIO tests, CPU-controlled integration, debugging, and CI evidence.
+- **[Week 3 engineering report](docs/weekly-reports/Week_03_Fault_Resilience_Engineering_Report.md)** — Fault model, bit-level vulnerability sweeps, dynamic saturation clamping, and 7-suite regression.
 
 ## System Architecture
 
-![PicoRV32 with simulation RAM, MMIO controller, and signed INT8 MAC](architecture/01-soc-overview.png)
+![RISC-V SoC with Fault-Resilient AI Accelerator](architecture/03-fault-resilient-soc-architecture.jpeg)
 
-The current **simulation testbench** connects the PicoRV32 RV32I CPU to **16 KB of instruction/data RAM**, a memory-mapped INT8 MAC controller at `0x80000000`, and a simulation-only result-reporting address at `0x10000000`. The MAC multiplies signed 8-bit operands, sign-extends the 16-bit product, and accumulates it in a signed 32-bit register. Accumulator arithmetic wraps on overflow rather than saturating.
+The system connects the PicoRV32 RV32I CPU over a 32-bit native memory bus to **16 KB of instruction/data RAM**, a memory-mapped fault-resilient INT8 MAC controller across `0x80000000`–`0x8000001C`, and a simulation-only result reporting address at `0x10000000`.
 
-The MMIO controller provides activation, weight, control, status, and result registers. Bare-metal C firmware writes operands, issues `START`, polls the sticky `DONE` bit, and reads back the accumulator. The MAC and peripheral are separate RTL modules; the current SoC address routing and RAM model live in a **simulation testbench**, not yet in a synthesizable top-level SoC.
+The accelerator datapath integrates:
+1. **Operand Registers:** `ACTIVATION` (`0x00`) and `WEIGHT` (`0x04`) storing signed INT8 operands.
+2. **Fault Injection Unit (FIU):** Software-controlled runtime single-event upset (SEU) injection via XOR bit-masking (`FAULT_CONFIG` at `0x14`).
+3. **Signed INT8 MAC:** 8 x 8 -> 16-bit multiplier sign-extended to a 32-bit accumulator.
+4. **Dynamic Saturation Clamping:** Low-overhead inline bounding logic (`PROTECTION` at `0x18`, `CLAMP_BOUND` at `0x1C`) that clips anomalous activations to [-BOUND, +BOUND] and raises sticky status bit `CLAMP_HIT`.
 
 For register addresses and additional design details, see the [architecture overview](architecture/architecture.md).
 
@@ -28,10 +33,11 @@ For register addresses and additional design details, see the [architecture over
 | PicoRV32 bare-metal firmware | Passed | GCC-compiled C firmware writes the expected MMIO value |
 | INT8 MAC directed/randomized tests | **213 checks passed** | Signed arithmetic, boundaries, idle/clear controls, wraparound |
 | INT8 MAC exhaustive test | **65,536 operand pairs passed** | Every signed INT8 activation/weight combination in the tested accumulation sequence |
+| INT8 MAC fault resilience | **9 checks passed** | Bit-flip sweeps (b0–b7), MSB vulnerability, and dynamic saturation clamping |
 | INT8 MAC MMIO peripheral | **16 checks passed** | Register operations, status, clear, and held-request behavior |
-| PicoRV32 + INT8 MAC integration | Passed | Three firmware-issued MAC commands; accumulator **35 → 23 → 39** |
+| PicoRV32 + INT8 MAC integration | Passed | Three firmware-issued MAC commands; accumulator **35 -> 23 -> 39** |
 
-All **six regression suites** passed locally and in the GitHub Actions workflow through the Week 2 integration milestone. These results establish correctness of the **tested RTL simulation scenarios**; they are not FPGA throughput, power, timing-closure, or fault-tolerance measurements.
+All **seven regression suites** passed locally and in automated simulation workflows. These results establish correctness of the **tested RTL simulation scenarios**; they are not FPGA throughput, power, timing-closure, or fault-tolerance measurements on physical silicon.
 
 ![RTL verification and CI pipeline](architecture/02-verification-pipeline.png)
 
@@ -40,7 +46,7 @@ All **six regression suites** passed locally and in the GitHub Actions workflow 
 On Ubuntu with Icarus Verilog, Python 3, a compatible `riscv64-unknown-elf-gcc` cross-compiler, and RISC-V binutils installed:
 
 ```bash
-# Build both firmware images and run all six RTL/firmware simulation suites
+# Build both firmware images and run all seven RTL/firmware simulation suites
 ./scripts/run_tests.sh
 ```
 
@@ -65,7 +71,7 @@ The runner builds both the baseline and accelerator firmware, invokes Icarus Ver
 |---|---|---|---|
 | **1** | PicoRV32 baseline, RV32I firmware, simulation, CI setup | **Completed** | [Week 1 report](docs/weekly-reports/Week_01_RISCV_FPGA_Engineering_Report.md) |
 | **2** | Signed INT8 MAC, exhaustive verification, MMIO controller, CPU integration | **Completed** | [Week 2 report](docs/weekly-reports/Week_02_RISCV_INT8_Accelerator_Engineering_Report.md) |
-| **3** | Define transient fault models; implement injection/detection/mitigation; quantify outcomes | Planned | Report pending |
+| **3** | Fault model, transient injection, detection/mitigation experiments | **Completed** | [Week 3 report](docs/weekly-reports/Week_03_Fault_Resilience_Engineering_Report.md) |
 | **4** | Synthesizable SoC integration, Vivado synthesis and timing/resource analysis; hardware evaluation if feasible | Planned | Report pending |
 
 ## Research Objectives
@@ -93,9 +99,9 @@ The runner builds both the baseline and accelerator firmware, invokes Icarus Ver
 
 ## Limitations and Next Steps
 
-The completed work provides a **simulation-verified baseline**, not yet a deployed, fault-resilient FPGA accelerator. In particular, there are no measured Artix-7 resource counts, timing-closure results, on-board throughput figures, or fault-detection/mitigation performance metrics. The SoC testbench's RAM and address routing must also be migrated into synthesizable hardware before FPGA implementation.
+The completed work provides a **simulation-verified fault-resilient baseline**, not yet a deployed physical FPGA design. In particular, there are no measured Artix-7 resource counts, timing-closure results, on-board throughput figures, or physical fault-tolerance measurements. The SoC testbench's RAM and address routing must also be migrated into synthesizable hardware before FPGA implementation.
 
-Week 3 will define an explicit transient-fault model and measurable detection/mitigation criteria. Week 4 targets FPGA synthesis and evaluation, subject to confirming the exact AX7203 FPGA part and constraints.
+Week 4 targets synthesizable SoC integration, Block RAM inference, and Vivado synthesis/implementation on the ALINX AX7203 target.
 
 ## Authorship, Licensing, and Research Citation
 
@@ -109,10 +115,10 @@ Week 3 will define an explicit transient-fault model and measurable detection/mi
 
 The project-specific contributions include:
 
-- Design and RTL implementation of the signed INT8 MAC accelerator.
+- Design and RTL implementation of the signed INT8 MAC accelerator with runtime fault injection and dynamic saturation clamping.
 - Development of the MMIO peripheral and its control interface.
 - PicoRV32-controlled accelerator integration and bare-metal C firmware.
-- Directed, randomized, exhaustive, MMIO, and end-to-end verification.
+- Directed, randomized, exhaustive, fault-resilience, MMIO, and end-to-end verification.
 - Firmware build automation, GitHub Actions CI, and engineering documentation.
 
 These contributions are distinct from the third-party PicoRV32 processor and other external tools.
