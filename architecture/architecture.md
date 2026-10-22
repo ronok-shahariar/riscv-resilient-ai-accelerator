@@ -1,55 +1,70 @@
-# RISC-V SoC Architecture Overview (architecture.md)
+# RISC-V Resilient AI Accelerator SoC: Architecture & Verification Report
 
-## 1. Project Status & Milestone Completion
-As of **Week 4**, the RISC-V SoC physical synthesis, timing constraints design, and bitstream generation pipelines have been fully validated and successfully implemented on physical hardware using the **ALINX AX7203** development board (AMD/Xilinx Artix-7 XC7A200T-2FBG484I FPGA).
+## 1. Executive Summary & Core Objective
+This project implements a hardware-software co-designed **RISC-V SoC** integrated with a custom **INT8 Matrix-Multiply-Accumulate (MAC) coprocessor** and fault-tolerance safety mechanisms. Deployed on an **ALINX AX7203 FPGA board (AMD/Xilinx Artix-7 XC7A200T-2FBG484I)**[cite: 1], the system bridges general-purpose embedded computing with high-throughput, reliable edge AI acceleration.
+
+---
 
 ## 2. Target Hardware Platform & Pin Mappings
-- **Development Board**: ALINX AX7203
-- **FPGA Device**: AMD/Xilinx Artix-7 XC7A200T-2FBG484I
-- **System Clock**: 200 MHz Differential Oscillator (Pins R4/T4 via `IBUFDS`, `LVDS_25` IOSTANDARD)
-- **Reset Interface**: Active-Low Pushbutton (Pin T6, `LVCMOS15` IOSTANDARD)
-- **UART Interface**: Tx Line (Pin B13, `LVCMOS33` IOSTANDARD)
+- **Development Board**: ALINX AX7203[cite: 1]
+- **FPGA Device**: AMD/Xilinx Artix-7 XC7A200T-2FBG484I[cite: 1]
+- **System Clock**: 200 MHz Differential Oscillator (Pins R4/T4 via `IBUFDS`, `LVDS_25` IOSTANDARD)[cite: 1]
+- **Reset Interface**: Active-Low Pushbutton (Pin T6, `LVCMOS15` IOSTANDARD)[cite: 1]
+- **UART Interface**: Tx Line (Pin B13, `LVCMOS33` IOSTANDARD)[cite: 1]
 
-## 3. Architecture Overview Diagram
+---
+
+## 3. Architecture Overview & System Topology
+The system architecture revolves around a clean bus interconnect linking the processor core, unified memory, the custom INT8 MAC hardware accelerator, and peripheral interfaces.
+
 ![RISC-V SoC Block Diagram](./riscv_soc_block_diagram.jpeg)
 
-## 4. Subsystem Architecture
-- **CPU Core**: 32-bit PicoRV32 processor core (RV32IMC compliance)
-- **Memory Subsystem**: 16KB dual-port Block RAM (BRAM) for unified instruction and data storage
-- **Accelerator**: 8-bit integer multiply-accumulate matrix engine (int8_mac coprocessor)
-- **Clocking & Resets**: Differential clock buffer (`IBUFDS`) converting 200 MHz system clock (`LVDS_25`) to single-ended logic clocking
-- **Fault Resilience**: Triple Modular Redundancy (TMR) vote logic with Hamming single-error correction / double-error detection (SECDED) ECC on critical execution path BRAM lines
+### Architectural Breakdown:
+1. **PicoRV32 CPU Core:** A lightweight 32-bit RISC-V soft-core processor (RV32IMC compliant)[cite: 1] that fetches instructions from BRAM, handles control flow, and coordinates data movement.
+2. **16KB Dual-Port Block RAM (BRAM):** Mapped at base address `0x0000_0000`, serving as the unified memory space for instruction execution, global variables, and the runtime stack[cite: 1].
+3. **MMIO Bus Intercept & Address Decoder:** Routes CPU read/write requests (`mem_valid`, `mem_ready`) based on target addresses, connecting to either the UART transmitter (`0x4000_0000`)[cite: 1] or the INT8 MAC coprocessor (`0x8000_0000`).
+4. **INT8 MAC Coprocessor:** Houses dedicated signed 8-bit multiplier logic, activation/weight registers, a control interface, and a 32-bit accumulation register to accelerate tensor and matrix-multiply workloads.
+
+---
+
+## 4. Subsystem Architecture & Fault Resilience
+- **CPU & Memory:** Optimized for small embedded footprints while providing enough headroom for bare-metal C applications[cite: 1].
+- **Clocking & Resets:** Differential clock buffering (`IBUFDS`) scales the 200 MHz system clock down into stable single-ended logic domains[cite: 1].
+- **Fault Resilience & ECC:** Implements dynamic numerical clamping logic and real-time error status flags to protect internal arithmetic pipelines against runtime bit-flips, radiation noise, or voltage spikes.
+
+---
 
 ## 5. MMIO Register Map
-Memory-mapped IO region allocated at base address `0x4000_0000`:
-- `0x4000_0000`: UART TX Data / Status Register
-- `0x4000_0004`: INT8 MAC Matrix Input Vector A / B Register
-- `0x4000_0008`: INT8 MAC Accumulator Output / Control Register
-- `0x4000_000C`: ECC Error Status and Fault Injection Register
+The memory-mapped I/O structure exposes direct hardware control to software firmware:
+- `0x4000_0000`: UART TX Data / Status Register[cite: 1]
+- `0x8000_0000`: INT8 MAC Activation Register (Input vector A)
+- `0x8000_0004`: INT8 MAC Weight Register (Input vector B)
+- `0x8000_0008`: INT8 MAC Control Register (Trigger compute / clear accumulator)
+- `0x8000_000C`: INT8 MAC Status Register (`DONE` / sticky fault flag)
+- `0x8000_0010`: INT8 MAC Result Register (32-bit widened accumulator output)
 
-## 6. Hardware Implementation & Utilization Summary
-Post-implementation routing and utilization metrics confirm low hardware overhead:
-- **Slice LUTs**: 12,450 / 134,600 (9.25%)
-- **Slice Registers**: 8,920 / 269,200 (3.31%)
-- **Block RAM (RAMB36E1)**: 4 / 365 (1.10%)
-- **DSP48E1 Slices**: 16 / 740 (2.16%)
+---
 
-## 7. Verification Pipeline
-- Co-simulation via Verilator testbenches running formal RV32IMC compliance suites.
-- Hardware-in-the-loop (HIL) verification over UART loopback at 115200 baud.
-- Fault injection testing validating TMR voter recovery and SECDED error reporting.
+## 6. Hardware Implementation & Resource Utilization
+Post-implementation routing metrics on the Artix-7 FPGA confirm minimal hardware overhead:
+- **Slice LUTs:** 12,450 / 134,600 (9.25%)[cite: 1]
+- **Slice Registers:** 8,920 / 269,200 (3.31%)[cite: 1]
+- **Block RAM (RAMB36E1):** 4 / 365 (1.10%)[cite: 1]
+- **DSP48E1 Slices:** 16 / 740 (2.16%)[cite: 1]
 
-## 8. Weekly Implementation Roadmap
-- **Week 1-2**: Core PicoRV32 integration, BRAM controller design, basic MMIO wiring.
-- **Week 3**: INT8 MAC coprocessor pipeline integration and Vivado synthesis setup.
-- **Week 4**: ALINX AX7203 FPGA bitstream validation, timing closure, physical pin constraints mapping.
-- **Week 5-6**: Fault-resilient TMR/SECDED architecture implementation, compliance testing, and documentation finalization.
+---
 
-## 9. Build Automation & Artifacts
-Automated non-GUI Vivado build workflows generate bitstreams and verification reports under `vivado_outputs/build_YYYYMMDD_HHMMSS/` via shell execution scripts (`./scripts/run_synth.sh` and `./scripts/run_hardware.sh`). Target bitstream artifact: `riscv_soc_top.bit`.
+## 7. Testing & Verification Procedure Flow
+System correctness is established through a rigorous multi-tier validation pipeline spanning simulation, automated cloud checks, and physical hardware deployment.
 
-## 10. Engineering Contributions
-- System-level RTL architecture design & integration
-- Custom INT8 matrix MAC hardware acceleration logic
-- Fault tolerance & ECC safety mechanism design
-- Automated Vivado synthesis, implementation, and bitstream generation flow
+![RISC-V SoC Testing and Verification Flowchart](./riscv_soc_verification_flow.jpeg)
+
+### Verification Pipeline Stages:
+1. **Phase 1: Local RTL Simulation & Regression:** Verilog source modules and testbenches (`tb_*.v`) are compiled and run via **Icarus Verilog** (`iverilog`/`vvp`). This validates baseline instruction execution, exhaustive signed 8-bit math checks ($65,536$ operand pairs), and fault-injection resilience.
+2. **Phase 2: Automated CI/CD Pipeline:** GitHub Actions automatically provisions an Ubuntu runner on every code push, installs the RISC-V GNU Toolchain (`riscv64-unknown-elf-gcc`), compiles bare-metal C firmware, and executes the master test script (`./scripts/run_tests.sh`).
+3. **Phase 3 & 4: FPGA Synthesis & Hardware-in-the-Loop (HIL):** Xilinx Vivado processes the RTL and timing constraints (`.xdc`) to generate the physical bitstream (`riscv_soc_top.bit`). The bitstream is flashed onto the ALINX AX7203 board, where live execution and UART telemetry are verified at 115200 baud.
+
+---
+
+## 8. Conclusion & Project Phase 1 Milestone
+Phase 1 successfully establishes a fully verified, fault-resilient, and hardware-validated RISC-V AI accelerator baseline. With physical FPGA execution and automated CI pipelines fully operational, the architecture is primed for scaling into Phase 2 (multi-MAC systolic arrays and neural network inference layers).
