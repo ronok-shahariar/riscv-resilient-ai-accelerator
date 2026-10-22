@@ -12,7 +12,10 @@ echo "========================================"
 
 echo "[BUILD] Compiling RV32I accelerator firmware"
 
-riscv64-unknown-elf-gcc \
+# Use CROSS_PREFIX environment variable if set, otherwise default to container's toolchain
+CROSS_PREFIX="${CROSS_PREFIX:-riscv32-unknown-elf-}"
+
+"${CROSS_PREFIX}gcc" \
   -march=rv32i \
   -mabi=ilp32 \
   -O2 \
@@ -32,7 +35,7 @@ riscv64-unknown-elf-gcc \
 
 echo "[BUILD] Generating firmware binary"
 
-riscv64-unknown-elf-objcopy \
+"${CROSS_PREFIX}objcopy" \
   -O binary \
   "$BUILD_DIR/accelerator.elf" \
   "$BUILD_DIR/accelerator.bin"

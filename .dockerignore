@@ -1,0 +1,4 @@
+.git
+vivado_outputs/
+firmware/build/
+simulation/build/

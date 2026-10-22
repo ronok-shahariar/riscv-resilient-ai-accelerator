@@ -1,5 +1,5 @@
-# Toolchain prefix pointing to Vivado Vitis bundled RISC-V GCC
-CROSS_PREFIX = /home/ronok/Vivado2025.2/2025.2/Vitis/gnu/riscv/lin/bin/riscv64-unknown-elf-
+# Toolchain prefix: defaults to container's riscv32 toolchain if not overridden
+CROSS_PREFIX ?= riscv32-unknown-elf-
 CC = $(CROSS_PREFIX)gcc
 OBJCOPY = $(CROSS_PREFIX)objcopy
 

@@ -108,6 +108,48 @@ The physical deployment and hardware-in-the-loop (HIL) verification are executed
 
 ---
 
+##  Quick Start with Docker 
+
+
+> Note: If you already have a fully configured local toolchain (including Vivado, Icarus Verilog, Python/Cocotb, and the RISC-V GNU Toolchain), you can simply follow the standard instructions below and run everything natively on your host machine without using Docker. However, if your local setup is incomplete or you want to ensure complete environment reproducibility, use Docker to run the firmware builds and simulation regression suite (`./scripts/run_tests.sh`) inside the isolated container.
+
+
+To ensure complete reproducibility and instant testing without manually installing toolchains, you can run the entire firmware build and RTL simulation regression suite inside an isolated Docker container.
+
+### **Prerequisites**
+
+* [Docker](https://www.docs.docker.com/get-docker/) installed and running on your machine.
+
+### **1\. Build the Docker Image**
+
+From the root directory of your repository, build the container image (this bundles Ubuntu, Python, Icarus Verilog, Cocotb, and the RISC-V 32-bit toolchain):
+
+```bash 
+docker build \-t riscv-ai-accelerator .
+```
+### **2\. Run the Full Simulation & Regression Suite**
+
+Execute all testbenches, firmware compilation scripts, and hardware validation tests in a single command:
+
+```bash 
+docker run \--rm \-it \-v \$(pwd):/workspace riscv-ai-accelerator ./scripts/run\_tests.sh
+``` 
+### **3\. Compile Firmware Independently (Optional)**
+
+If you only want to re-compile the bare-metal C firmware or accelerator code inside the container:
+
+```bash
+\# Compile main SoC firmware 
+ 
+docker run \--rm \-it \-v \$(pwd):/workspace riscv-ai-accelerator make \-C firmware
+
+\# Compile accelerator firmware 
+
+docker run \--rm \-it \-v \$(pwd):/workspace riscv-ai-accelerator ./scripts/build\_accelerator\_firmware.sh
+``` 
+
+
+
 ##  Authorship & Licensing
 
 - **Maintainer & Author:** Md Shahariar Hassan ([346ronokarya@gmail.com](mailto:346ronokarya@gmail.com))
