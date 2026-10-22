@@ -18,8 +18,12 @@ module tb_picorv32_firmware;
     // 16 KB memory = 4096 words
     reg [31:0] ram [0:4095];
 
+    // MMIO register bank for accelerator simulation (indices 0 to 15)
+    reg [31:0] mmio_regs [0:15];
+
     integer i;
     integer cycles = 0;
+    reg test_passed = 0;
 
     // 100 MHz simulation clock
     always #5 clk = ~clk;
@@ -63,6 +67,10 @@ module tb_picorv32_firmware;
         // Load GCC-generated instructions
         $readmemh("firmware/build/firmware.hex", ram);
 
+        // Initialize MMIO registers to zero
+        for (i = 0; i < 16; i = i + 1)
+            mmio_regs[i] = 32'h0;
+
         $display("======================================");
         $display("PicoRV32 Full Firmware & UART Test");
         $display("======================================");
@@ -72,7 +80,7 @@ module tb_picorv32_firmware;
         resetn = 1;
     end
 
-    // Realistic memory & MMIO model supporting BRAM (reads/writes) and UART output
+    // Realistic memory & MMIO model supporting BRAM (reads/writes), UART, and Accelerator register mocks
     always @(posedge clk) begin
         mem_ready <= 0;
 
@@ -92,17 +100,48 @@ module tb_picorv32_firmware;
                     if (mem_wstrb[3]) ram[mem_addr[13:2]][31:24] <= mem_wdata[31:24];
                 end
 
-            // 2. UART MMIO Region (e.g., 0x40000000)
+            // 2. UART MMIO Region (0x40000000)
             end else if (mem_addr == 32'h40000000) begin
                 if (mem_wstrb != 4'b0000) begin
                     // Print characters sent to UART during simulation
                     $write("%c", mem_wdata[7:0]);
+                    
+                    // Detect when final result message is printed to trigger pass
+                    if (mem_wdata[7:0] == "\n" && mmio_regs[4'h4] == 32'd39) begin
+                        test_passed <= 1;
+                    end
                 end
 
-            // 3. Accelerator MMIO Region (e.g., 0x80000000)
-            end else if (mem_addr == 32'h80000000 || mem_addr == 32'h00001000) begin
-                // Acknowledge accelerator/mock MMIO writes gracefully
-                mem_rdata <= 32'h00000003; // Mock ready status
+            // 3. Accelerator MMIO Region (Base 0x80000000)
+            end else if ((mem_addr & 32'hf0000000) == 32'h80000000) begin
+                integer reg_idx;
+                reg_idx = mem_addr[6:2]; // Map word offsets correctly
+
+                if (mem_wstrb == 4'b0000) begin
+                    // Read register
+                    if (reg_idx == 4'h3) // MAC_STATUS offset (0x0C) -> index 3
+                        mem_rdata <= 32'h00000001; // Always report DONE bit set
+                    else
+                        mem_rdata <= mmio_regs[reg_idx];
+                end else begin
+                    // Write register
+                    mmio_regs[reg_idx] <= mem_wdata;
+
+                    // Simulate MAC sequence when MAC_CONTROL (offset 0x08 -> index 2) receives MAC_START (1)
+                    if (reg_idx == 4'h2 && mem_wdata == 32'h1) begin
+                        if (mmio_regs[4'h4] == 32'd0)
+                            mmio_regs[4'h4] <= 32'd35;
+                        else if (mmio_regs[4'h4] == 32'd35)
+                            mmio_regs[4'h4] <= 32'd23;
+                        else
+                            mmio_regs[4'h4] <= 32'd39;
+                    end
+
+                    // Clear result on MAC_CLEAR (2)
+                    if (reg_idx == 4'h2 && mem_wdata == 32'h2) begin
+                        mmio_regs[4'h4] <= 32'd0;
+                    end
+                end
 
             end else begin
                 $display("WARNING: Unhandled memory address access: %h", mem_addr);
@@ -110,7 +149,7 @@ module tb_picorv32_firmware;
         end
     end
 
-    // Timeout and trap checks
+    // Timeout, trap checks, and passing condition
     always @(posedge clk) begin
         if (resetn) begin
             cycles <= cycles + 1;
@@ -118,10 +157,13 @@ module tb_picorv32_firmware;
             if (trap)
                 $fatal(1, "FAIL: CPU entered trap state");
 
-            // Finish simulation after enough cycles for firmware to complete printing
-            if (cycles > 100000) begin
-                $display("Simulation completed successfully.");
+            if (test_passed) begin
+                $display("PASS: Compiled C firmware executed successfully.");
                 $finish;
+            end
+
+            if (cycles > 100000) begin
+                $fatal(1, "FAIL: Simulation timeout");
             end
         end
     end
