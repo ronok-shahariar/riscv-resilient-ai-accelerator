@@ -24,24 +24,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install verification tools
+      - name: Build Docker verification image
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            iverilog \
-            gcc-riscv64-unknown-elf \
-            binutils-riscv64-unknown-elf \
-            python3
+          docker build -t riscv-ai-accelerator .
 
-      - name: Display tool versions
+      - name: Run PicoRV32 verification suite in Docker
         run: |
-          iverilog -V | head -n 3
-          riscv64-unknown-elf-gcc --version | head -n 1
-          python3 --version
-
-      - name: Run PicoRV32 verification suite
-        run: |
-          bash scripts/run_tests.sh
+          docker run --rm -v $(pwd):/workspace riscv-ai-accelerator ./scripts/run_tests.sh
 
       - name: Upload simulation logs
         if: always()
