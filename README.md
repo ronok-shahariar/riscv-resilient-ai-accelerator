@@ -1,18 +1,11 @@
 # RISC-V-Based Fault-Resilient INT8 AI Accelerator
 
-A research-oriented FPGA project integrating a **PicoRV32 RISC-V processor** with a custom **signed INT8 multiply-accumulate (MAC) accelerator** via memory-mapped I/O (MMIO). 
+TThe project implements a custom System-on-Chip (SoC) centered around a PicoRV32 soft-core processor connected via a 32-bit Memory-Mapped I/O (MMIO) bus to 16 KB of block RAM, a UART telemetry interface, and a custom signed INT8 multiply-accumulate (MAC) co-processor targeting an Artix-7 FPGA (`xc7a200t-fbg484-2`). The architectural motivation is driven by the reality that environmental radiation, cosmic rays, or abnormal operating conditions can induce transient bit flips, which risk causing severe computational corruption or system failure in critical applications. To counteract this, the design embeds runtime fault resilience directly into the arithmetic datapath through software-controlled Single-Event Upset (SEU) injection—using XOR bit-masking across operand registers—coupled with dynamic saturation clamping that monitors accumulated values to clip anomalous activations and raise sticky error flags (`CLAMP_HIT`) without interrupting primary execution.
 
-> **Current status — Phase 1 Fully Completed (Weeks 1–4):** Processor-controlled INT8 MAC execution, transient fault injection, dynamic saturation clamping resilience, and **physical FPGA synthesis, timing closure, and bitstream generation (`riscv_soc_top.bit`) for the ALINX AX7203 board** have been successfully validated.
+The implementation achieves exceptional area efficiency, consuming under 1% of total logic resources and 1.1% of block RAM, and is fully verified through exhaustive simulation of 65,536 signed INT8 activation-weight pairs alongside successful physical synthesis and bitstream generation (`riscv_soc_top.bit`). However, the design encounters a critical timing closure bottleneck when evaluated against a strict 200 MHz system clock, recording a Worst Negative Slack (WNS) of `-5.782 ns`. This violation originates from a deep combinatorial critical path (`10.650 ns`) where multiplication, fault-injection emulation, and saturation clamping execute entirely within a single clock cycle—revealing an architectural trade-off between control simplicity and operating frequency, despite robust signal routing stability and passing hold timing.
 
 ---
 
-##  Quick Start & Documentation
-
-- [**Architecture Overview**](architecture/architecture.md) — SoC diagrams, pin mappings, and MMIO map.
-- [**Week 1 Report**](docs/weekly-reports/Week_01_RISCV_FPGA_Engineering_Report.md) — PicoRV32 baseline, RV32I firmware, and initial CI.
-- [**Week 2 Report**](docs/weekly-reports/Week_02_RISCV_INT8_Accelerator_Engineering_Report.md) — INT8 MAC design, MMIO tests, and CPU integration.
-- [**Week 3 Report**](docs/weekly-reports/Week_03_Fault_Resilience_Engineering_Report.md) — Fault modeling, SEU sweeps, and saturation clamping.
-- [**Week 4 Report**](docs/weekly-reports/Week_04_Report.md) — FPGA synthesis, differential clocking (`IBUFDS`), and bitstream generation.
 
 ---
 
@@ -27,6 +20,9 @@ The system connects the PicoRV32 CPU over a 32-bit memory bus to **16 KB of inst
 2. **Fault Injection Unit (FIU):** Software-controlled runtime single-event upset (SEU) injection via XOR bit-masking (`FAULT_CONFIG` at `0x14`).
 3. **Signed INT8 MAC:** 8 x 8 -> 16-bit multiplier sign-extended to a 32-bit accumulator.
 4. **Dynamic Saturation Clamping:** Low-overhead bounding logic (`PROTECTION` at `0x18`, `CLAMP_BOUND` at `0x1C`) that clips anomalous activations and raises sticky status bit `CLAMP_HIT`.
+
+> [**Architecture Overview**](architecture/architecture.md) — SoC diagrams, pin mappings, and MMIO map.
+
 
 ---
 
@@ -48,6 +44,39 @@ The system connects the PicoRV32 CPU over a 32-bit memory bus to **16 KB of inst
 | **FPGA Synthesis & Bitstream** | **Passed (0 Errors)** | Physical synthesis, timing closure, and `riscv_soc_top.bit` generation |
 
 All **seven regression suites** pass locally and in automated CI pipelines.
+
+---
+
+---
+
+## Vivado Synthesis & Implementation Analysis Summary
+
+
+### 1. Architectural Layout & Resource Footprint
+Post-synthesis netlist inspection confirms a clean hierarchical design consisting of 9 cells and 244 nets, maintaining an exceptionally lightweight resource footprint (<1% total logic usage).
+* **Slice LUTs:** 1,319 / 133,800 (0.99%)
+* **Slice Registers:** 741 / 267,600 (0.28%)
+* **Block RAM (BRAM):** 4 tiles (1.10%) for 16KB system memory.
+
+![Top-Level Schematic](images/report_v1.0_images/top_level_schematic.png)  
+*Figure: Post-synthesis top-level schematic (`soc_top`) showing differential clock buffers and unified MMIO routing.*
+
+![Resource Utilization](images/report_v1.0_images/resource_utilization.png)  
+*Figure: Hierarchical resource breakdown showing low logic density and high fabric availability.*
+
+### 2. Timing Performance & Architectural Trade-off
+* **The Trade-off (Simplicity vs. Speed):** Executing multiplication, SEU fault-injection emulation, and dynamic saturation clamping entirely within a **single clock cycle** simplifies control logic but creates a deep combinatorial path (`10.650 ns` propagation delay).
+* **Timing Metrics:** Against a strict 200 MHz system clock constraint (5.000 ns period), the implementation records a Worst Negative Slack (WNS) of `-5.782 ns`. However, hold timing (`+0.099 ns`) and pulse width (`+1.370 ns`) pass cleanly, proving physical routing stability.
+
+![Timing Summary](images/report_v1.0_images/timing_summary.png)  
+*Figure: Vivado Design Timing Summary indicating setup slack violations at 200 MHz.*
+
+### 3. Version 2.0 Roadmap
+- **Pipeline Datapath:** Transition single-cycle MAC and saturation logic into a multi-stage pipeline to achieve 200 MHz timing closure.
+- **Clock Scaling:** Alternatively target 100 MHz constraints for immediate board deployment.
+- **Dual-Core Redundancy:** Leverage remaining FPGA fabric (>98%) for Dual-Modular Redundancy (DMR).
+
+> **Read the complete, in-depth analysis:** [**Vivado Report Analysis**](docs/vivado_report_analysis/report_v1.0.md)
 
 ---
 
@@ -101,10 +130,10 @@ On Ubuntu with Icarus Verilog, Python 3, and a compatible `riscv64-unknown-elf-g
 The physical deployment and hardware-in-the-loop (HIL) verification are executed on the **ALINX AX7203 development board**, powered by the **AMD/Xilinx Artix-7 XC7A200T-2FBG484I** FPGA. 
 
 ### Key Hardware Interfaces & Pin Mappings:
-- **System Clock:** 200 MHz Differential Oscillator connected via pins `R4/T4` using `IBUFDS` buffers and `LVDS_25` I/O standards.
+- **System Clock:** 200 MHz Differential Oscillator connected via pins `R4/T4` (`clk_p`/`clk_n`) using `IBUFDS` buffers and `LVDS_25` I/O standards.
 - **Reset Interface:** Active-Low Pushbutton routed to pin `T6` (`LVCMOS15` standard).
-- **UART Telemetry & Debug:** Serial TX line mapped to pin `B13` (`LVCMOS33` standard) operating at 115,200 baud for real-time verification and execution logging.
-- **Status Indicators:** CPU trap and status LEDs mapped to board user LEDs (e.g., pin `H17`).
+- **UART Telemetry & Debug:** Serial TX line mapped to pin `N15` (`LVCMOS33` standard) connected to the CP2102 UART bridge operating at 115,200 baud for real-time verification and execution logging.
+- **Status Indicators:** CPU trap status mapped to carrier board LED1 on pin `B13` (`LVCMOS33` standard).
 
 ---
 
