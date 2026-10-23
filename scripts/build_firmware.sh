@@ -3,12 +3,15 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-mkdir -p firmware/build
+BUILD_DIR="firmware/build"
+mkdir -p "$BUILD_DIR"
 
-echo "[BUILD] Compiling RV32I firmware"
+echo "========================================"
+echo "COMPILING FIRMWARE FOR PICORV32"
+echo "========================================"
 
 # Use CROSS_PREFIX environment variable if set, otherwise default to container's toolchain
-CROSS_PREFIX="${CROSS_PREFIX:-riscv32-unknown-elf-}"
+CROSS_PREFIX="${CROSS_PREFIX:-riscv64-unknown-elf-}"
 
 "${CROSS_PREFIX}gcc" \
   -march=rv32i \
@@ -26,16 +29,12 @@ CROSS_PREFIX="${CROSS_PREFIX:-riscv32-unknown-elf-}"
   -T firmware/linker/picorv32.ld \
   firmware/src/start.S \
   firmware/src/main.c \
-  -o firmware/build/firmware.elf
-
-echo "[BUILD] Generating firmware binary"
+  -o "$BUILD_DIR/firmware.elf"
 
 "${CROSS_PREFIX}objcopy" \
   -O binary \
-  firmware/build/firmware.elf \
-  firmware/build/firmware.bin
-
-echo "[BUILD] Generating 32-bit HEX image"
+  "$BUILD_DIR/firmware.elf" \
+  "$BUILD_DIR/firmware.bin"
 
 python3 - <<'PY'
 from pathlib import Path
@@ -50,12 +49,11 @@ if len(data) % 4:
 
 with target.open("w") as file:
     for offset in range(0, len(data), 4):
-        word = int.from_bytes(
-            data[offset:offset + 4], "little"
-        )
+        word = int.from_bytes(data[offset:offset + 4], "little")
         file.write(f"{word:08x}\n")
 
-print(f"[BUILD] Generated {len(data)//4} words")
+print(f"[BUILD] Generated {len(data) // 4} words")
 PY
 
 echo "[PASS] Firmware build completed"
+echo "========================================"

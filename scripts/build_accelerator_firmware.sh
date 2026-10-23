@@ -10,10 +10,8 @@ echo "========================================"
 echo "WEEK 2: RISC-V ACCELERATOR FIRMWARE BUILD"
 echo "========================================"
 
-echo "[BUILD] Compiling RV32I accelerator firmware"
-
 # Use CROSS_PREFIX environment variable if set, otherwise default to container's toolchain
-CROSS_PREFIX="${CROSS_PREFIX:-riscv32-unknown-elf-}"
+CROSS_PREFIX="${CROSS_PREFIX:-riscv64-unknown-elf-}"
 
 "${CROSS_PREFIX}gcc" \
   -march=rv32i \
@@ -33,14 +31,10 @@ CROSS_PREFIX="${CROSS_PREFIX:-riscv32-unknown-elf-}"
   firmware/accelerator/main.c \
   -o "$BUILD_DIR/accelerator.elf"
 
-echo "[BUILD] Generating firmware binary"
-
 "${CROSS_PREFIX}objcopy" \
   -O binary \
   "$BUILD_DIR/accelerator.elf" \
   "$BUILD_DIR/accelerator.bin"
-
-echo "[BUILD] Generating 32-bit HEX image"
 
 python3 - <<'PY'
 from pathlib import Path
