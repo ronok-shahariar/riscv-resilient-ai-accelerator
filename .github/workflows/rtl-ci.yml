@@ -24,6 +24,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Cache APT package archives
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-cache-${{ hashFiles('.github/workflows/rtl-ci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-cache-
+
       - name: Install verification tools
         run: |
           sudo apt-get update
